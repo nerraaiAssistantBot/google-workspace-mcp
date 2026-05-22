@@ -1,0 +1,26 @@
+name: Publish to GitLab Registry
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: echo "tag=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+
+      - name: Login to GitLab Container Registry
+        run: echo "${{ secrets.GITLAB_REGISTRY_TOKEN }}" | docker login "${{ secrets.GITLAB_REGISTRY_URL }}" -u "${{ secrets.GITLAB_REGISTRY_USER }}" --password-stdin
+
+      - name: Build and push
+        run: |
+          IMAGE="${{ secrets.GITLAB_REGISTRY_URL }}/nerra/brain/google-workspace-mcp"
+          docker build -t "$IMAGE:${{ steps.version.outputs.tag }}" -t "$IMAGE:latest" .
+          docker push "$IMAGE:${{ steps.version.outputs.tag }}"
+          docker push "$IMAGE:latest"
